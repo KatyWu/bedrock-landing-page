@@ -358,22 +358,22 @@
       width: 100%;
     }
 
-    /* Dark radial backdrop behind hero text so orange text pops against orange rain */
+    /* Dark backdrop covering entire hero content — text AND wallet */
     .hero-content::before {
       content: '';
       position: absolute;
-      top: -10px; left: 50%;
+      top: -40px; left: 50%;
       transform: translateX(-50%);
-      width: 820px; max-width: 100%;
-      height: 360px;
-      background: radial-gradient(ellipse,
-        rgba(8,11,15,0.85) 15%,
-        rgba(8,11,15,0.45) 50%,
-        transparent 75%
+      width: 900px; max-width: 110%;
+      height: calc(100% + 80px);
+      background: radial-gradient(ellipse 70% 55% at 50% 38%,
+        rgba(8,11,15,0.9) 0%,
+        rgba(8,11,15,0.65) 40%,
+        rgba(8,11,15,0.2) 65%,
+        transparent 80%
       );
       pointer-events: none;
       z-index: -1;
-      border-radius: 50%;
     }
 
     /* ── FLYING COIN ── */
@@ -461,11 +461,6 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 16px; padding: 32px;
-      transition: border-color .25s, transform .25s;
-    }
-    .feature-card:hover {
-      border-color: rgba(247,147,26,0.35);
-      transform: translateY(-3px);
     }
 
     .feature-icon {
@@ -951,40 +946,76 @@
   (function () {
     const canvas = document.getElementById('matrix-rain');
     const ctx    = canvas.getContext('2d');
-    const CHARS  = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ0123456789₿ABCDEF';
-    const FS     = 13;
-    let drops    = [];
+    const CHARS  = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモ0123456789₿ABCDEF';
+    const FS     = 14;
+
+    /* Each stream: { col, y, speed, len } */
+    let streams = [];
 
     function init() {
       canvas.width  = hero.offsetWidth;
       canvas.height = hero.offsetHeight;
+      ctx.fillStyle = '#080b0f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       const cols = Math.floor(canvas.width / FS);
-      drops = Array.from({ length: cols }, () =>
-        Math.floor(Math.random() * -(canvas.height / FS))
-      );
+      streams = [];
+      for (let i = 0; i < cols; i++) {
+        spawnStream(i, true);
+      }
+    }
+
+    function spawnStream(col, randomY) {
+      const len   = Math.floor(Math.random() * 18 + 10); /* 10-27 chars long */
+      const speed = Math.random() * 0.6 + 0.3;           /* 0.3-0.9 rows/tick */
+      const startY = randomY
+        ? Math.random() * -(canvas.height / FS)           /* stagger on init */
+        : -(len + 2);                                      /* start above top */
+      streams.push({ col, y: startY, speed, len });
     }
 
     function tick() {
-      ctx.fillStyle = 'rgba(8,11,15,0.1)';
+      /* Fade trail — low alpha = very long tails */
+      ctx.fillStyle = 'rgba(8,11,15,0.045)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.font = FS + 'px monospace';
 
-      for (let i = 0; i < drops.length; i++) {
-        const ch = CHARS[Math.floor(Math.random() * CHARS.length)];
-        const y  = drops[i] * FS;
+      for (let s = streams.length - 1; s >= 0; s--) {
+        const st = streams[s];
+        const headY = Math.floor(st.y);
 
-        /* Head: bright; rest fades naturally via overlay */
-        ctx.fillStyle = `rgba(247,160,40,${Math.random() * 0.35 + 0.2})`;
-        ctx.fillText(ch, i * FS, y);
+        for (let k = 0; k < st.len; k++) {
+          const row = headY - k;
+          if (row < 0 || row * FS > canvas.height) continue;
 
-        if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i] += 0.45;
+          const ch = CHARS[Math.floor(Math.random() * CHARS.length)];
+          const x  = st.col * FS;
+          const y  = row * FS;
+
+          if (k === 0) {
+            /* Head: bright white-orange */
+            ctx.fillStyle = 'rgba(255, 220, 140, 0.98)';
+          } else {
+            /* Trail: fade with distance from head */
+            const fade = 1 - k / st.len;
+            ctx.fillStyle = `rgba(247,147,26,${(fade * fade * 0.7 + 0.05).toFixed(2)})`;
+          }
+          ctx.fillText(ch, x, y);
+        }
+
+        st.y += st.speed;
+
+        /* Respawn when stream has fully scrolled off bottom */
+        if ((st.y - st.len) * FS > canvas.height) {
+          streams.splice(s, 1);
+          spawnStream(st.col, false);
+        }
       }
     }
 
     init();
     window.addEventListener('resize', init);
-    setInterval(tick, 48);
+    setInterval(tick, 45);
   })();
 
   /* ── Lucide icons ── */
