@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bedrock — Bitcoin Cold Wallet</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080b0f;
+      --surface:   #0e1318;
+      --border:    #1c2530;
+      --accent:    #f7931a;
+      --accent-dim:#b36a12;
+      --text:      #e8edf3;
+      --muted:     #6b7d8f;
+      --glow:      rgba(247,147,26,0.18);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 60px;
+      background: rgba(8,11,15,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.25rem; font-weight: 700; letter-spacing: 0.04em;
+      color: var(--text); text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 32px; height: 32px;
+    }
+
+    .logo-icon rect { fill: var(--accent); }
+    .logo-icon path { fill: var(--bg); }
+
+    nav ul {
+      list-style: none; display: flex; gap: 36px;
+    }
+
+    nav ul a {
+      color: var(--muted); text-decoration: none; font-size: 0.9rem;
+      letter-spacing: 0.03em; transition: color .2s;
+    }
+    nav ul a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: var(--accent); color: #000 !important;
+      padding: 9px 22px; border-radius: 6px;
+      font-weight: 600; font-size: 0.875rem !important;
+      transition: background .2s !important;
+    }
+    .nav-cta:hover { background: #e0841a !important; color: #000 !important; }
+
+    /* ── CUSTOM CURSOR ── */
+    #btc-cursor {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #000;
+      font-size: 1.1rem; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      transition: opacity .15s, transform .08s, width .15s, height .15s, font-size .15s;
+      box-shadow: 0 0 16px rgba(247,147,26,0.6);
+      user-select: none;
+    }
+    #btc-cursor.pressed {
+      width: 28px; height: 28px; font-size: 0.85rem;
+      box-shadow: 0 0 28px rgba(247,147,26,0.9);
+    }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 140px 24px 100px;
+      position: relative; overflow: hidden;
+      cursor: none;
+    }
+
+    .hero-glow {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -60%);
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(247,147,26,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 6px 16px; border-radius: 100px;
+      font-size: 0.8rem; color: var(--muted);
+      letter-spacing: 0.05em; margin-bottom: 32px;
+      cursor: none;
+    }
+
+    .badge-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent); animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .4; }
+    }
+
+    h1 {
+      font-size: clamp(2.6rem, 6vw, 5rem);
+      font-weight: 800; line-height: 1.1;
+      letter-spacing: -0.02em;
+      max-width: 780px; margin-bottom: 24px;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--muted); max-width: 520px;
+      margin-bottom: 44px;
+    }
+
+    .btn-group { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+
+    .btn-primary {
+      background: var(--accent); color: #000;
+      padding: 14px 32px; border-radius: 8px;
+      font-weight: 700; font-size: 1rem;
+      text-decoration: none; border: none; cursor: none;
+      transition: background .2s, transform .15s;
+    }
+    .btn-primary:hover { background: #e0841a; transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: transparent; color: var(--text);
+      padding: 14px 32px; border-radius: 8px;
+      font-weight: 600; font-size: 1rem;
+      text-decoration: none; border: 1px solid var(--border);
+      cursor: none; transition: border-color .2s, transform .15s;
+    }
+    .btn-secondary:hover { border-color: var(--muted); transform: translateY(-1px); }
+
+    /* ── HARDWARE WALLET DEVICE ── */
+    .device-wrap {
+      margin-top: 64px; position: relative;
+      display: inline-block;
+    }
+
+    /* Hint label */
+    .device-hint {
+      font-size: 0.75rem; color: var(--muted);
+      letter-spacing: 0.06em; margin-bottom: 14px;
+      opacity: 0.6;
+      animation: hintPulse 2.5s ease-in-out infinite;
+    }
+    @keyframes hintPulse {
+      0%,100% { opacity: 0.6; } 50% { opacity: 0.25; }
+    }
+
+    /* Outer body — portrait hardware wallet shape */
+    .device {
+      width: 160px;
+      background: #111820;
+      border: 1.5px solid #2a3545;
+      border-radius: 22px;
+      padding: 0 0 18px;
+      box-shadow:
+        0 0 60px rgba(247,147,26,0.15),
+        0 30px 60px rgba(0,0,0,0.7),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+      position: relative;
+      cursor: none;
+      transition: box-shadow .3s;
+    }
+
+    .device.active {
+      box-shadow:
+        0 0 80px rgba(247,147,26,0.45),
+        0 30px 60px rgba(0,0,0,0.7),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    /* Coin slot at the top */
+    .device-slot-wrap {
+      display: flex; justify-content: center;
+      padding: 14px 0 0;
+    }
+    .device-slot {
+      width: 52px; height: 5px;
+      background: #060a0e;
+      border-radius: 3px;
+      border: 1px solid #1a2330;
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow .15s;
+    }
+    .device-slot.absorb {
+      box-shadow: 0 0 12px 3px rgba(247,147,26,0.8);
+    }
+    /* Slot inner flash */
+    .device-slot::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity .05s;
+    }
+    .device-slot.absorb::after { opacity: 1; }
+
+    /* Screen */
+    .device-screen {
+      margin: 10px 12px 0;
+      background: #070f18;
+      border: 1px solid #1c2a38;
+      border-radius: 10px;
+      padding: 14px 12px 12px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .device-screen::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(160deg, rgba(247,147,26,0.06) 0%, transparent 60%);
+    }
+
+    .screen-brand {
+      font-size: 0.55rem; letter-spacing: 0.15em;
+      color: var(--muted); text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .screen-icon { font-size: 1.6rem; line-height: 1; margin-bottom: 6px; }
+
+    .screen-label {
+      font-size: 0.55rem; letter-spacing: 0.1em;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 4px;
+    }
+
+    .screen-bal {
+      font-size: 0.85rem; font-weight: 800;
+      color: var(--accent); letter-spacing: -0.01em;
+      transition: color .15s;
+    }
+    .screen-bal.flash {
+      color: #fff;
+    }
+
+    /* Buttons row */
+    .device-buttons {
+      display: flex; justify-content: space-between;
+      padding: 12px 18px 0;
+    }
+    .dev-btn {
+      width: 28px; height: 10px;
+      background: #1a2535;
+      border-radius: 5px;
+      border: 1px solid #2a3a50;
+    }
+
+    /* LED */
+    .device-led {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #22c55e; box-shadow: 0 0 7px #22c55e;
+      margin: 10px auto 0;
+      animation: pulse 3s infinite;
+    }
+
+    /* ── FLYING COIN ── */
+    .coin-fly {
+      position: fixed;
+      pointer-events: none;
+      z-index: 8000;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #000;
+      font-size: 1rem; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 14px rgba(247,147,26,0.7);
+    }
+
+    /* Particle burst */
+    .particle {
+      position: fixed;
+      pointer-events: none;
+      z-index: 7999;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* ── STATS ── */
+    #stats {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 52px 60px;
+      display: flex; justify-content: center; gap: 0;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      flex: 1; min-width: 180px;
+      text-align: center; padding: 20px;
+      border-right: 1px solid var(--border);
+    }
+    .stat:last-child { border-right: none; }
+
+    .stat-num {
+      font-size: 2.2rem; font-weight: 800;
+      color: var(--accent); letter-spacing: -0.02em;
+    }
+
+    .stat-label {
+      font-size: 0.85rem; color: var(--muted);
+      margin-top: 4px; letter-spacing: 0.04em;
+    }
+
+    /* ── SECTION SHARED ── */
+    section { padding: 100px 60px; max-width: 1200px; margin: 0 auto; }
+
+    .section-tag {
+      display: inline-block;
+      font-size: 0.75rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--accent);
+      margin-bottom: 14px;
+    }
+
+    h2 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800; line-height: 1.15;
+      letter-spacing: -0.02em; margin-bottom: 16px;
+    }
+
+    .section-sub {
+      color: var(--muted); font-size: 1.05rem;
+      max-width: 520px; margin-bottom: 60px;
+    }
+
+    /* ── FEATURES ── */
+    #features { padding-top: 80px; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px;
+      transition: border-color .25s, transform .25s;
+    }
+    .feature-card:hover {
+      border-color: rgba(247,147,26,0.35);
+      transform: translateY(-3px);
+    }
+
+    .feature-icon {
+      width: 48px; height: 48px;
+      background: rgba(247,147,26,0.12);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 18px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem; font-weight: 700; margin-bottom: 10px;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem; color: var(--muted); line-height: 1.65;
+    }
+
+    /* ── HOW IT WORKS ── */
+    #how {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      max-width: 100%; padding: 100px 60px;
+    }
+
+    #how .inner { max-width: 1200px; margin: 0 auto; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0;
+      position: relative;
+    }
+
+    .step {
+      padding: 32px;
+      position: relative;
+    }
+
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute; top: 44px; right: 0;
+      width: 1px; height: 40px;
+      background: var(--border);
+      display: none;
+    }
+
+    .step-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(247,147,26,0.15);
+      border: 1px solid rgba(247,147,26,0.4);
+      color: var(--accent);
+      font-weight: 700; font-size: 0.85rem;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .step p  { font-size: 0.875rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── SECURITY ── */
+    #security { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+
+    .security-visual {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 40px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .sec-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .sec-icon { font-size: 1.2rem; }
+
+    .sec-info { flex: 1; }
+    .sec-info strong { display: block; font-size: 0.875rem; font-weight: 600; }
+    .sec-info span { font-size: 0.78rem; color: var(--muted); }
+
+    .sec-status {
+      font-size: 0.72rem; color: #22c55e;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.25);
+      padding: 3px 10px; border-radius: 100px;
+      font-weight: 600; letter-spacing: 0.04em;
+    }
+
+    .security-text .section-sub { margin-bottom: 32px; }
+
+    .check-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+
+    .check-list li {
+      display: flex; align-items: flex-start; gap: 12px;
+      font-size: 0.9rem; color: var(--muted);
+    }
+
+    .check-list li::before {
+      content: '✓';
+      color: var(--accent); font-weight: 700;
+      margin-top: 1px; flex-shrink: 0;
+    }
+
+    /* ── CTA ── */
+    #cta {
+      text-align: center; padding: 120px 60px;
+      max-width: 100%; position: relative; overflow: hidden;
+    }
+
+    #cta .glow {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(247,147,26,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    #cta .inner { position: relative; max-width: 680px; margin: 0 auto; }
+
+    #cta h2 { margin-bottom: 20px; }
+    #cta .section-sub { margin: 0 auto 44px; max-width: 460px; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+
+    footer .logo { font-size: 1rem; }
+
+    footer p { font-size: 0.8rem; color: var(--muted); }
+
+    footer nav ul { gap: 24px; }
+    footer nav ul a { font-size: 0.8rem; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      nav { padding: 18px 24px; }
+      nav ul { display: none; }
+      section { padding: 72px 24px; }
+      #how { padding: 72px 24px; }
+      #stats { padding: 40px 24px; }
+      #security { grid-template-columns: 1fr; gap: 40px; }
+      .security-visual { order: -1; }
+      footer { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#hero" class="logo">
+    <svg class="logo-icon" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="7"/>
+      <path d="M21.5 14.2c.4-.8.3-1.8-.3-2.5-.6-.7-1.6-1-2.5-.8l-.4-1.6-1.2.3.4 1.5-1 .2-.4-1.5-1.2.3.4 1.6-2.5.6.3 1.2.7-.2c.3-.1.7.1.8.5l1 4c.1.4-.1.7-.4.8l-.7.2.3 1.3 2.5-.6.4 1.6 1.2-.3-.4-1.6 1-.2.4 1.6 1.2-.3-.4-1.6c1.6-.6 2.4-2 2.1-3.5-.2-.7-.6-1.2-1.3-1.5zm-4.9-.9l1.8-.4c.8-.2 1.5.2 1.7 1 .2.7-.2 1.4-1 1.6l-1.8.4-.7-2.6zm2.4 5.7l-2.1.5-.7-2.9 2.1-.5c.9-.2 1.7.3 1.9 1.1.2.9-.3 1.6-1.2 1.8z"/>
+    </svg>
+    Bedrock
+  </a>
+  <ul>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#security">Security</a></li>
+    <li><a href="#cta" class="nav-cta">Buy Now</a></li>
+  </ul>
+</nav>
+
+<!-- ── CUSTOM CURSOR ── -->
+<div id="btc-cursor">₿</div>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <div class="hero-glow"></div>
+
+  <div class="badge">
+    <span class="badge-dot"></span>
+    Now shipping worldwide
+  </div>
+
+  <h1>Your Bitcoin.<br><span>Your Foundation.</span></h1>
+
+  <p class="hero-sub">
+    Bedrock is a military-grade Bitcoin cold wallet designed for those who believe
+    in true self-custody. No internet. No compromise.
+  </p>
+
+  <div class="btn-group">
+    <a href="#cta" class="btn-primary">Get Bedrock — $149</a>
+    <a href="#how" class="btn-secondary">How It Works</a>
+  </div>
+
+  <div class="device-wrap">
+    <p class="device-hint">Click the wallet to deposit ↓</p>
+
+    <div class="device" id="hw-wallet">
+      <!-- Coin slot -->
+      <div class="device-slot-wrap">
+        <div class="device-slot" id="hw-slot"></div>
+      </div>
+
+      <!-- Screen -->
+      <div class="device-screen">
+        <div class="screen-brand">Bedrock</div>
+        <div class="screen-icon">₿</div>
+        <div class="screen-label">Cold Storage</div>
+        <div class="screen-bal" id="screen-bal">1.84720000 BTC</div>
+      </div>
+
+      <!-- Physical buttons -->
+      <div class="device-buttons">
+        <div class="dev-btn"></div>
+        <div class="dev-btn"></div>
+      </div>
+
+      <!-- LED -->
+      <div class="device-led"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<div id="stats">
+  <div class="stat">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">Air-gapped</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">256-bit</div>
+    <div class="stat-label">AES Encryption</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">50K+</div>
+    <div class="stat-label">Wallets Secured</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">$0</div>
+    <div class="stat-label">Hacks. Ever.</div>
+  </div>
+</div>
+
+<!-- ── FEATURES ── -->
+<section id="features">
+  <span class="section-tag">Why Bedrock</span>
+  <h2>Built like a vault.<br>Simple as paper.</h2>
+  <p class="section-sub">
+    Every feature is designed to keep your Bitcoin safe without sacrificing usability.
+  </p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>Fully Air-Gapped</h3>
+      <p>No WiFi, no Bluetooth, no USB data path. Transactions are signed offline and transferred via QR code only.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧱</div>
+      <h3>Titanium Enclosure</h3>
+      <p>Aircraft-grade titanium chassis withstands physical attacks, fire, and water. Your keys survive anything you do.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔑</div>
+      <h3>24-Word Seed Backup</h3>
+      <p>BIP-39 compliant seed generation with a laser-etched steel backup card included in the box.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👁</div>
+      <h3>Open Source Firmware</h3>
+      <p>Every line of code is publicly auditable on GitHub. No hidden backdoors — ever. Verifiable from boot.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Bitcoin-Only</h3>
+      <p>We don't support altcoins. This isn't a limitation — it's a feature. Focus means fewer attack surfaces.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡</div>
+      <h3>Secure Element Chip</h3>
+      <p>EAL6+ certified secure element stores private keys in tamper-proof hardware, immune to side-channel attacks.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<div id="how">
+  <div class="inner">
+    <span class="section-tag">How It Works</span>
+    <h2>Setup in minutes.<br>Secured for decades.</h2>
+    <p class="section-sub">
+      Getting started with Bedrock is straightforward. True self-custody was never meant to be complicated.
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Unbox & Power On</h3>
+        <p>Bedrock ships sealed in a tamper-evident package. Power on with the physical button — no software required to begin.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>Generate Your Keys</h3>
+        <p>The device generates a cryptographically random 24-word seed offline. Write it down on the steel backup card provided.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Receive Bitcoin</h3>
+        <p>Scan the QR code displayed on-device to get your receive address. Send Bitcoin from any exchange or wallet.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <h3>Sign Offline</h3>
+        <p>When spending, scan the unsigned transaction QR into Bedrock, sign it offline, then broadcast the signed QR from any device.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECURITY ── -->
+<section id="security">
+  <div class="security-visual">
+    <div class="sec-row">
+      <span class="sec-icon">🔐</span>
+      <div class="sec-info">
+        <strong>Private Key</strong>
+        <span>Never leaves the secure element</span>
+      </div>
+      <span class="sec-status">SECURED</span>
+    </div>
+    <div class="sec-row">
+      <span class="sec-icon">📡</span>
+      <div class="sec-info">
+        <strong>Network Interface</strong>
+        <span>Air-gapped — no connectivity</span>
+      </div>
+      <span class="sec-status">OFFLINE</span>
+    </div>
+    <div class="sec-row">
+      <span class="sec-icon">🧬</span>
+      <div class="sec-info">
+        <strong>Firmware Integrity</strong>
+        <span>Verified on every boot</span>
+      </div>
+      <span class="sec-status">VERIFIED</span>
+    </div>
+    <div class="sec-row">
+      <span class="sec-icon">💾</span>
+      <div class="sec-info">
+        <strong>Seed Backup</strong>
+        <span>Steel card — fireproof to 1400°C</span>
+      </div>
+      <span class="sec-status">PROTECTED</span>
+    </div>
+    <div class="sec-row">
+      <span class="sec-icon">🏛</span>
+      <div class="sec-info">
+        <strong>Tamper Detection</strong>
+        <span>Physical intrusion wipes keys</span>
+      </div>
+      <span class="sec-status">ACTIVE</span>
+    </div>
+  </div>
+
+  <div class="security-text">
+    <span class="section-tag">Security</span>
+    <h2>Not your keys,<br>not your coins.</h2>
+    <p class="section-sub">
+      Bedrock was engineered with one assumption: the internet is hostile. Every design decision starts from zero trust.
+    </p>
+
+    <ul class="check-list">
+      <li>Keys generated and stored exclusively in an EAL6+ certified secure element chip</li>
+      <li>Passphrase protection with up to 50-character BIP-39 extension</li>
+      <li>Anti-tamper mesh that erases all data upon physical breach</li>
+      <li>No supply-chain attack vectors — firmware verified by cryptographic signature on boot</li>
+      <li>Shamir Secret Sharing support for multi-location seed backup (2-of-3)</li>
+      <li>Open-source firmware — reproducible builds, verifiable by anyone</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<div id="cta">
+  <div class="glow"></div>
+  <div class="inner">
+    <span class="section-tag">Get Started</span>
+    <h2>Own your Bitcoin.<br>Own your future.</h2>
+    <p class="section-sub">
+      Join over 50,000 Bitcoiners who trust Bedrock to keep their wealth beyond reach.
+    </p>
+    <div class="btn-group" style="justify-content:center">
+      <a href="#" class="btn-primary">Order Bedrock — $149</a>
+      <a href="#" class="btn-secondary">View Open Source Code</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <a href="#hero" class="logo">
+    <svg class="logo-icon" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="7"/>
+      <path d="M21.5 14.2c.4-.8.3-1.8-.3-2.5-.6-.7-1.6-1-2.5-.8l-.4-1.6-1.2.3.4 1.5-1 .2-.4-1.5-1.2.3.4 1.6-2.5.6.3 1.2.7-.2c.3-.1.7.1.8.5l1 4c.1.4-.1.7-.4.8l-.7.2.3 1.3 2.5-.6.4 1.6 1.2-.3-.4-1.6 1-.2.4 1.6 1.2-.3-.4-1.6c1.6-.6 2.4-2 2.1-3.5-.2-.7-.6-1.2-1.3-1.5zm-4.9-.9l1.8-.4c.8-.2 1.5.2 1.7 1 .2.7-.2 1.4-1 1.6l-1.8.4-.7-2.6zm2.4 5.7l-2.1.5-.7-2.9 2.1-.5c.9-.2 1.7.3 1.9 1.1.2.9-.3 1.6-1.2 1.8z"/>
+    </svg>
+    Bedrock
+  </a>
+
+  <p>© 2026 Bedrock Inc. Not your keys, not your coins.</p>
+
+  <nav>
+    <ul>
+      <li><a href="#">Privacy</a></li>
+      <li><a href="#">Terms</a></li>
+      <li><a href="#">GitHub</a></li>
+      <li><a href="#">Support</a></li>
+    </ul>
+  </nav>
+</footer>
+
+<script>
+  /* ── State ── */
+  let btcBalance = 1.84720000;
+  const INCREMENT = 0.00100000;
+
+  const hero     = document.getElementById('hero');
+  const cursor   = document.getElementById('btc-cursor');
+  const wallet   = document.getElementById('hw-wallet');
+  const slot     = document.getElementById('hw-slot');
+  const balEl    = document.getElementById('screen-bal');
+
+  /* ── Custom cursor ── */
+  let cursorInHero = false;
+
+  document.addEventListener('mousemove', e => {
+    cursor.style.left = e.clientX + 'px';
+    cursor.style.top  = e.clientY + 'px';
+  });
+
+  hero.addEventListener('mouseenter', () => {
+    cursorInHero = true;
+    cursor.style.opacity = '1';
+  });
+
+  hero.addEventListener('mouseleave', () => {
+    cursorInHero = false;
+    cursor.style.opacity = '0';
+  });
+
+  /* ── Click: shoot coin into slot ── */
+  wallet.addEventListener('mousedown', e => {
+    cursor.classList.add('pressed');
+    shootCoin(e.clientX, e.clientY);
+  });
+
+  document.addEventListener('mouseup', () => {
+    cursor.classList.remove('pressed');
+  });
+
+  function shootCoin(startX, startY) {
+    /* Get slot center in viewport coords */
+    const slotRect = slot.getBoundingClientRect();
+    const targetX  = slotRect.left + slotRect.width  / 2;
+    const targetY  = slotRect.top  + slotRect.height / 2;
+
+    /* Create coin */
+    const coin = document.createElement('div');
+    coin.className = 'coin-fly';
+    coin.textContent = '₿';
+    coin.style.left = startX + 'px';
+    coin.style.top  = startY + 'px';
+    document.body.appendChild(coin);
+
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const duration = Math.max(300, Math.min(600, dist * 1.2));
+
+    /* Animate with Web Animations API */
+    const anim = coin.animate([
+      { transform: 'translate(-50%,-50%) scale(1)',   opacity: 1 },
+      { transform: `translate(calc(-50% + ${dx * 0.6}px), calc(-50% + ${dy * 0.4}px)) scale(0.9)`, opacity: 1, offset: 0.5 },
+      { transform: `translate(calc(-50% + ${dx}px),   calc(-50% + ${dy}px))   scale(0.25)`, opacity: 0 }
+    ], { duration, easing: 'cubic-bezier(0.4, 0, 0.8, 1)', fill: 'forwards' });
+
+    anim.onfinish = () => {
+      coin.remove();
+      absorbCoin();
+    };
+  }
+
+  function absorbCoin() {
+    /* Slot flash */
+    slot.classList.add('absorb');
+    wallet.classList.add('active');
+    setTimeout(() => {
+      slot.classList.remove('absorb');
+      wallet.classList.remove('active');
+    }, 320);
+
+    /* Balance update */
+    btcBalance += INCREMENT;
+    balEl.classList.add('flash');
+    balEl.textContent = btcBalance.toFixed(8) + ' BTC';
+    setTimeout(() => balEl.classList.remove('flash'), 250);
+
+    /* Particle burst from slot */
+    burstParticles();
+  }
+
+  function burstParticles() {
+    const slotRect = slot.getBoundingClientRect();
+    const cx = slotRect.left + slotRect.width  / 2;
+    const cy = slotRect.top  + slotRect.height / 2;
+    const count = 8;
+
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = cx + 'px';
+      p.style.top  = cy + 'px';
+      document.body.appendChild(p);
+
+      const angle = (i / count) * Math.PI * 2;
+      const dist  = 28 + Math.random() * 22;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist;
+
+      p.animate([
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
+      ], { duration: 420, easing: 'ease-out', fill: 'forwards' })
+        .onfinish = () => p.remove();
+    }
+  }
+</script>
+</body>
+</html>
