@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bedrock — Bitcoin Cold Wallet</title>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -90,6 +91,20 @@
       box-shadow: 0 0 28px rgba(247,147,26,0.9);
     }
 
+    /* ── LUCIDE ICONS ── */
+    .feature-icon svg {
+      width: 26px; height: 26px;
+      stroke: var(--accent);
+      stroke-width: 1.75;
+      fill: none;
+    }
+    .sec-icon svg {
+      width: 20px; height: 20px;
+      stroke: var(--accent);
+      stroke-width: 2;
+      fill: none;
+    }
+
     /* ── HERO ── */
     #hero {
       min-height: 100vh;
@@ -99,6 +114,8 @@
       padding: 140px 24px 100px;
       position: relative; overflow: hidden;
       cursor: none;
+      max-width: 100%;
+      width: 100%;
     }
 
     .hero-glow {
@@ -710,32 +727,32 @@
 
   <div class="features-grid">
     <div class="feature-card">
-      <div class="feature-icon">🔒</div>
+      <div class="feature-icon"><i data-lucide="wifi-off"></i></div>
       <h3>Fully Air-Gapped</h3>
       <p>No WiFi, no Bluetooth, no USB data path. Transactions are signed offline and transferred via QR code only.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🧱</div>
+      <div class="feature-icon"><i data-lucide="shield"></i></div>
       <h3>Titanium Enclosure</h3>
       <p>Aircraft-grade titanium chassis withstands physical attacks, fire, and water. Your keys survive anything you do.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🔑</div>
+      <div class="feature-icon"><i data-lucide="key-round"></i></div>
       <h3>24-Word Seed Backup</h3>
       <p>BIP-39 compliant seed generation with a laser-etched steel backup card included in the box.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">👁</div>
+      <div class="feature-icon"><i data-lucide="code-2"></i></div>
       <h3>Open Source Firmware</h3>
       <p>Every line of code is publicly auditable on GitHub. No hidden backdoors — ever. Verifiable from boot.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">⚡</div>
+      <div class="feature-icon"><i data-lucide="zap"></i></div>
       <h3>Bitcoin-Only</h3>
       <p>We don't support altcoins. This isn't a limitation — it's a feature. Focus means fewer attack surfaces.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🛡</div>
+      <div class="feature-icon"><i data-lucide="cpu"></i></div>
       <h3>Secure Element Chip</h3>
       <p>EAL6+ certified secure element stores private keys in tamper-proof hardware, immune to side-channel attacks.</p>
     </div>
@@ -780,7 +797,7 @@
 <section id="security">
   <div class="security-visual">
     <div class="sec-row">
-      <span class="sec-icon">🔐</span>
+      <span class="sec-icon"><i data-lucide="lock"></i></span>
       <div class="sec-info">
         <strong>Private Key</strong>
         <span>Never leaves the secure element</span>
@@ -788,7 +805,7 @@
       <span class="sec-status">SECURED</span>
     </div>
     <div class="sec-row">
-      <span class="sec-icon">📡</span>
+      <span class="sec-icon"><i data-lucide="radio-tower"></i></span>
       <div class="sec-info">
         <strong>Network Interface</strong>
         <span>Air-gapped — no connectivity</span>
@@ -796,7 +813,7 @@
       <span class="sec-status">OFFLINE</span>
     </div>
     <div class="sec-row">
-      <span class="sec-icon">🧬</span>
+      <span class="sec-icon"><i data-lucide="shield-check"></i></span>
       <div class="sec-info">
         <strong>Firmware Integrity</strong>
         <span>Verified on every boot</span>
@@ -804,7 +821,7 @@
       <span class="sec-status">VERIFIED</span>
     </div>
     <div class="sec-row">
-      <span class="sec-icon">💾</span>
+      <span class="sec-icon"><i data-lucide="database"></i></span>
       <div class="sec-info">
         <strong>Seed Backup</strong>
         <span>Steel card — fireproof to 1400°C</span>
@@ -812,7 +829,7 @@
       <span class="sec-status">PROTECTED</span>
     </div>
     <div class="sec-row">
-      <span class="sec-icon">🏛</span>
+      <span class="sec-icon"><i data-lucide="alert-triangle"></i></span>
       <div class="sec-info">
         <strong>Tamper Detection</strong>
         <span>Physical intrusion wipes keys</span>
@@ -969,6 +986,9 @@
     window.addEventListener('resize', init);
     setInterval(tick, 48);
   })();
+
+  /* ── Lucide icons ── */
+  lucide.createIcons();
 
   /* ── Click: shoot coin into slot ── */
   wallet.addEventListener('mousedown', e => {
