@@ -289,6 +289,61 @@
       animation: pulse 3s infinite;
     }
 
+    /* ── CURSOR ARROW ── */
+    #btc-arrow-wrap {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 0; height: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+    #btc-arrow-wrap::before {
+      content: '';
+      position: absolute;
+      left: 21px; top: -1px;
+      width: 14px; height: 2px;
+      background: rgba(247,147,26,0.95);
+      border-radius: 1px;
+    }
+    #btc-arrow-wrap::after {
+      content: '';
+      position: absolute;
+      left: 33px; top: -5px;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 8px solid rgba(247,147,26,0.95);
+    }
+
+    /* Near-wallet glow on cursor */
+    #btc-cursor.near-wallet {
+      animation: nearGlow .55s ease-in-out infinite alternate;
+    }
+    @keyframes nearGlow {
+      from { box-shadow: 0 0 16px rgba(247,147,26,0.6); }
+      to   { box-shadow: 0 0 40px rgba(247,147,26,1.0), 0 0 70px rgba(247,147,26,0.45); }
+    }
+
+    /* ── MATRIX RAIN CANVAS ── */
+    #matrix-rain {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Hero content above canvas */
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+    }
+
     /* ── FLYING COIN ── */
     .coin-fly {
       position: fixed;
@@ -555,54 +610,57 @@
 </nav>
 
 <!-- ── CUSTOM CURSOR ── -->
-<div id="btc-cursor">₿</div>
+<div id="btc-cursor">₿<div id="btc-arrow-wrap"></div></div>
 
 <!-- ── HERO ── -->
 <section id="hero">
+  <canvas id="matrix-rain"></canvas>
   <div class="hero-glow"></div>
 
-  <div class="badge">
-    <span class="badge-dot"></span>
-    Now shipping worldwide
-  </div>
+  <div class="hero-content">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      Now shipping worldwide
+    </div>
 
-  <h1>Your Bitcoin.<br><span>Your Foundation.</span></h1>
+    <h1>Your Bitcoin.<br><span>Your Foundation.</span></h1>
 
-  <p class="hero-sub">
-    Bedrock is a military-grade Bitcoin cold wallet designed for those who believe
-    in true self-custody. No internet. No compromise.
-  </p>
+    <p class="hero-sub">
+      Bedrock is a military-grade Bitcoin cold wallet designed for those who believe
+      in true self-custody. No internet. No compromise.
+    </p>
 
-  <div class="btn-group">
-    <a href="#cta" class="btn-primary">Get Bedrock — $149</a>
-    <a href="#how" class="btn-secondary">How It Works</a>
-  </div>
+    <div class="btn-group">
+      <a href="#cta" class="btn-primary">Get Bedrock — $149</a>
+      <a href="#how" class="btn-secondary">How It Works</a>
+    </div>
 
-  <div class="device-wrap">
-    <p class="device-hint">Click the wallet to deposit ↓</p>
+    <div class="device-wrap">
+      <p class="device-hint">Click the wallet to deposit ↓</p>
 
-    <div class="device" id="hw-wallet">
-      <!-- Coin slot -->
-      <div class="device-slot-wrap">
-        <div class="device-slot" id="hw-slot"></div>
+      <div class="device" id="hw-wallet">
+        <!-- Coin slot -->
+        <div class="device-slot-wrap">
+          <div class="device-slot" id="hw-slot"></div>
+        </div>
+
+        <!-- Screen -->
+        <div class="device-screen">
+          <div class="screen-brand">Bedrock</div>
+          <div class="screen-icon">₿</div>
+          <div class="screen-label">Cold Storage</div>
+          <div class="screen-bal" id="screen-bal">1.84720000 BTC</div>
+        </div>
+
+        <!-- Physical buttons -->
+        <div class="device-buttons">
+          <div class="dev-btn"></div>
+          <div class="dev-btn"></div>
+        </div>
+
+        <!-- LED -->
+        <div class="device-led"></div>
       </div>
-
-      <!-- Screen -->
-      <div class="device-screen">
-        <div class="screen-brand">Bedrock</div>
-        <div class="screen-icon">₿</div>
-        <div class="screen-label">Cold Storage</div>
-        <div class="screen-bal" id="screen-bal">1.84720000 BTC</div>
-      </div>
-
-      <!-- Physical buttons -->
-      <div class="device-buttons">
-        <div class="dev-btn"></div>
-        <div class="dev-btn"></div>
-      </div>
-
-      <!-- LED -->
-      <div class="device-led"></div>
     </div>
   </div>
 </section>
@@ -809,29 +867,93 @@
   let btcBalance = 1.84720000;
   const INCREMENT = 0.00100000;
 
-  const hero     = document.getElementById('hero');
-  const cursor   = document.getElementById('btc-cursor');
-  const wallet   = document.getElementById('hw-wallet');
-  const slot     = document.getElementById('hw-slot');
-  const balEl    = document.getElementById('screen-bal');
+  const hero      = document.getElementById('hero');
+  const cursor    = document.getElementById('btc-cursor');
+  const arrowWrap = document.getElementById('btc-arrow-wrap');
+  const wallet    = document.getElementById('hw-wallet');
+  const slot      = document.getElementById('hw-slot');
+  const balEl     = document.getElementById('screen-bal');
 
-  /* ── Custom cursor ── */
+  /* ── Custom cursor + directional arrow ── */
   let cursorInHero = false;
 
   document.addEventListener('mousemove', e => {
     cursor.style.left = e.clientX + 'px';
     cursor.style.top  = e.clientY + 'px';
+
+    if (cursorInHero) {
+      const wr   = wallet.getBoundingClientRect();
+      const wcx  = wr.left + wr.width  / 2;
+      const wcy  = wr.top  + wr.height / 2;
+      const dx   = wcx - e.clientX;
+      const dy   = wcy - e.clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      arrowWrap.style.transform = `rotate(${angle}deg)`;
+
+      if (dist < 110) {
+        arrowWrap.style.opacity = '0';
+        cursor.classList.add('near-wallet');
+      } else {
+        arrowWrap.style.opacity = '1';
+        cursor.classList.remove('near-wallet');
+      }
+    }
   });
 
   hero.addEventListener('mouseenter', () => {
     cursorInHero = true;
     cursor.style.opacity = '1';
+    arrowWrap.style.opacity = '1';
   });
 
   hero.addEventListener('mouseleave', () => {
     cursorInHero = false;
     cursor.style.opacity = '0';
+    cursor.classList.remove('near-wallet');
+    arrowWrap.style.opacity = '0';
   });
+
+  /* ── Matrix Rain ── */
+  (function () {
+    const canvas = document.getElementById('matrix-rain');
+    const ctx    = canvas.getContext('2d');
+    const CHARS  = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ0123456789₿ABCDEF';
+    const FS     = 13;
+    let drops    = [];
+
+    function init() {
+      canvas.width  = hero.offsetWidth;
+      canvas.height = hero.offsetHeight;
+      const cols = Math.floor(canvas.width / FS);
+      drops = Array.from({ length: cols }, () =>
+        Math.floor(Math.random() * -(canvas.height / FS))
+      );
+    }
+
+    function tick() {
+      ctx.fillStyle = 'rgba(8,11,15,0.1)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = FS + 'px monospace';
+
+      for (let i = 0; i < drops.length; i++) {
+        const ch = CHARS[Math.floor(Math.random() * CHARS.length)];
+        const y  = drops[i] * FS;
+
+        /* Head: bright; rest fades naturally via overlay */
+        ctx.fillStyle = `rgba(247,160,40,${Math.random() * 0.35 + 0.2})`;
+        ctx.fillText(ch, i * FS, y);
+
+        if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i] += 0.45;
+      }
+    }
+
+    init();
+    window.addEventListener('resize', init);
+    setInterval(tick, 48);
+  })();
 
   /* ── Click: shoot coin into slot ── */
   wallet.addEventListener('mousedown', e => {
